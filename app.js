@@ -1,35 +1,39 @@
-const createError = require("http-errors");
 const express = require("express");
-const cookieParser = require("cookie-parser");
 const logger = require("morgan");
-const mongoose = require("mongoose");
 const cors = require("cors");
-
-require("dotenv").config();
-
-mongoose
-  .connect(process.env.MONGO_DB, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("MONGO DB CONNECTED"))
-  .catch((e) => console.log(e));
-
-const usersRouter = require("./routes/users/usersRouter");
-
+const rateLimit = require("express-rate-limit");
 const app = express();
+const ErrorMessageHandlerClass = require("./routes/utils/ErrorMessageHandlerClass");
+const errorController = require("./routes/utils/errorController");
+const userRouter = require("./routes/user/userRouter");
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(cors());
 
-app.use(logger("dev"));
+if (process.env.NODE_ENV === "development") {
+  app.use(logger("dev"));
+}
+
+const limiter = rateLimit({
+  max: 20,
+  windowMs: 1 * 60 * 1000, //this is in millie seconds
+  message:
+    "Too many requests from this IP, please try again or contact support",
+});
+
+app.use("/api", limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 
-app.use("/api/users", usersRouter);
+app.use("/api/user", userRouter);
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404));
+app.all("*", function (req, res, next) {
+  next(
+    new ErrorMessageHandlerClass(
+      `Cannot find ${req.originalUrl} on this server! Check your URL`,
+      404
+    )
+  );
 });
+app.use(errorController);
+
+module.exports = app;
