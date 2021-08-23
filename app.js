@@ -1,39 +1,51 @@
+require("dotenv").config();
+const createError = require("http-errors");
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const logger = require("morgan");
+const mongoose = require("mongoose");
 const cors = require("cors");
-const rateLimit = require("express-rate-limit");
+
+mongoose
+  .connect(process.env.MONGO_DB, {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MONGO DB CONNECTED"))
+  .catch((e) => console.log(e));
+
+const usersRouter = require("./routes/users/usersRouter");
+
 const app = express();
-const ErrorMessageHandlerClass = require("./routes/utils/ErrorMessageHandlerClass");
-const errorController = require("./routes/utils/errorController");
-const userRouter = require("./routes/user/userRouter");
+const originUrl =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "DEPLOY URL";
 
-app.use(cors());
+app.use(cors({ origin: originUrl, credentials: true }));
 
-if (process.env.NODE_ENV === "development") {
-  app.use(logger("dev"));
-}
-
-const limiter = rateLimit({
-  max: 20,
-  windowMs: 1 * 60 * 1000, //this is in millie seconds
-  message:
-    "Too many requests from this IP, please try again or contact support",
-});
-
-app.use("/api", limiter);
+app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
-app.use("/api/user", userRouter);
+app.use("/api/users", usersRouter);
 
-app.all("*", function (req, res, next) {
-  next(
-    new ErrorMessageHandlerClass(
-      `Cannot find ${req.originalUrl} on this server! Check your URL`,
-      404
-    )
-  );
+// catch 404 and forward to error handler
+app.use(function (req, res, next) {
+  next(createError(404));
 });
-app.use(errorController);
+
+// error handler
+app.use(function (err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get("env") === "development" ? err : {};
+
+  // render the error page
+  res.status(err.status || 500);
+  res.json("error");
+});
 
 module.exports = app;

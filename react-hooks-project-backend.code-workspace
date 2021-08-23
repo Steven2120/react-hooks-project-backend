@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "react-hooks-project-backend",
+			"path": "."
+		},
+		{
+			"name": "bin",
+			"path": "../../week-27/auth-backend-passport/bin"
+		},
+		{
+			"name": "routes",
+			"path": "../../week-27/auth-backend-passport/routes"
+		}
+	],
+	"settings": {}
+}
